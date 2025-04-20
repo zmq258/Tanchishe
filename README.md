@@ -24,9 +24,9 @@
 - `ESC` 直接调用 `endgame(3, score)`，返回 `MENU`
 - 收到 `snakemove()` 的非零返回值，也调用 `endgame(reason, score)`
 
-(4) 将 **`loginMenu()`** 重构为状态机方法，使用 `GameState` 枚举来表示用户选择：
+(4) **将 `loginMenu()` 重构为状态机方法**，使用 `GameState` 枚举来表示用户选择：
 
-- **`PLAY` **表示登录成功，进入游戏循环；
+- **`PLAY`**表示登录成功，进入游戏循环；
 - **`EXIT_PROGRAM`** 表示用户选择退出，程序应终止；
 - **`loginMenu()`** 第三项“退出”不再直接 `exit(0)`，而是返回 `EXIT`，由 `main()` 退出主循环。
 
@@ -34,4 +34,4 @@
 
 这样整个流程都由 **`enum GameState { MENU, PLAY, EXIT }`**来控制，不再依赖额外的全局状态变量。
 
-2.结束游戏(endgame())后不直接推出，而是返回到登陆界面。
+2.结束游戏(`endgame()`)后不直接推出，而是返回到登陆界面。
