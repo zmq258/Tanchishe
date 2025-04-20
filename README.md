@@ -35,6 +35,6 @@
 
 (5) **`main()`** 用 `GameState state` 统一驱动
 
-这样整个流程都由 **`enum GameState { MENU, PLAY, EXIT }`**来控制，不再依赖额外的全局状态变量。
+这样整个流程都由 **`enum GameState { MENU, PLAY, EXIT }`** 来控制，不再依赖额外的全局状态变量。
 
 2.结束游戏(`endgame()`)后不直接推出，而是返回到登陆界面。
