@@ -1,25 +1,37 @@
-# Tanchishe
+# 贪吃蛇
 
-Ҫ��
-1.�û��״�ʹ����Ϸ��Ҫ��ע����Ϸ�û���������;
-2.�û�ÿ�ο�ʼ��Ϸ��Ҫ����֤�û��������룬��֤ͨ���������Ϸ;����Ϸ������������ʾ��***����������Ϸ��***��
-3.����Ϸ������������ʾ����F5��ʾ��Ϸ�û���־������������Ӧ����;
-4.��Ϸ�û������Լ�¼�û��������룬��Ϸ�û���־���Լ�¼�û���ID���û�����ÿ����Ϸ�Ŀ�ʼʱ�䡢����ʱ���͵÷�;
+### 要求：
 
-���£�
-1.�ع���Ϸ���̣��Ա�δ��Ҫ֧�ָ��ࡰ���桱�л�������ѭ����Ϊ״̬����
-    (1) ȥ��ȫ�� int endgamestatus��������ײ/�˳�ԭ���� snakemove() ���أ�0�������ƶ�
-                                                                         1��ײǽ
-                                                                         2��ҧ���Լ�
-    (2) snakemove() ��Ϊ int����ǽ���⡢��ҧ��ⶼ���ڴ˺����ڣ���ֻ�������������
-    (3) ���� gamecircle() ���� GameState����ѭ���ڵ��˳�/��ײ�߼����д�����
-            �� ESC ֱ�ӵ��� endgame(3, score)������ MENU
-            �� �յ� snakemove() �ķ��㷵��ֵ��Ҳ���� endgame(reason, score)
-    (4) �� loginMenu �ع�Ϊ״̬��������ʹ�� GameState ö������ʾ�û�ѡ��
-            PLAY ��ʾ��¼�ɹ���������Ϸѭ����
-            EXIT_PROGRAM ��ʾ�û�ѡ���˳�������Ӧ��ֹ��
-        loginMenu() ������˳��� ����ֱ�� exit(0)�����Ƿ��� EXIT���� main() �˳���ѭ����
-    (5) main() �� GameState state ͳһ������ȷ���������ܻص���¼�˵������˳���
-�����������̶��� enum GameState { MENU, PLAY, EXIT } �����ƣ��������������ȫ��״̬������
+1.用户首次使用游戏，要求注册游戏用户名和密码;
+2.用户每次开始游戏，要求验证用户名和密码，验证通过后进入游戏;在游戏主界面添加显示“张三正在游戏中”
+3.在游戏主界面添加显示“按F5显示游戏用户日志”，并完善相应功能;
+4.游戏用户表用以记录用户名和密码，游戏用户日志用以记录用户的ID和用户名、每次游戏的开始时间、持续时长和得分;
 
-2.������Ϸ(endgame())��ֱ���Ƴ������Ƿ��ص���½���档
+### 更新：
+
+1.重构游戏流程，以便未来要支持更多“界面”切换，将主循环改为状态机:
+
+(1) **去掉全局 `int endgamestatus`**，所有碰撞/退出原因都由 `snakemove()` 返回：
+
+- `0`：正常移动
+- `1`：撞墙
+- `2`：咬到自己
+
+(2) **`snakemove()`** 改为 `int`，将墙体检测、自咬检测都放在此函数内，并只负责更新蛇身。
+
+(3) **新增 `gamecircle()` 返回 `GameState`**，将循环内的退出/碰撞逻辑集中处理：
+
+- `ESC` 直接调用 `endgame(3, score)`，返回 `MENU`
+- 收到 `snakemove()` 的非零返回值，也调用 `endgame(reason, score)`
+
+(4) 将 **`loginMenu()`** 重构为状态机方法，使用 `GameState` 枚举来表示用户选择：
+
+- **`PLAY` **表示登录成功，进入游戏循环；
+- **`EXIT_PROGRAM`** 表示用户选择退出，程序应终止；
+- **`loginMenu()`** 第三项“退出”不再直接 `exit(0)`，而是返回 `EXIT`，由 `main()` 退出主循环。
+
+(5) **`main()`** 用 `GameState state` 统一驱动
+
+这样整个流程都由 **`enum GameState { MENU, PLAY, EXIT }`**来控制，不再依赖额外的全局状态变量。
+
+2.结束游戏(endgame())后不直接推出，而是返回到登陆界面。
