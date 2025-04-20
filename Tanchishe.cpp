@@ -1,91 +1,88 @@
+#include <iostream>
 #include <stdio.h>
 #include <time.h>
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
 #include <conio.h>
+using namespace std;
 
 #define U 1
 #define D 2
 #define L 3 
-#define R 4       // Uï¼šä¸Š ï¼›Dï¼šä¸‹ï¼›L:å·¦ Rï¼šå³
+#define R 4       // U£ºÉÏ £»D£ºÏÂ£»L:×ó R£ºÓÒ
 
 typedef struct SNAKE {
     int x, y;
     struct SNAKE* next;
 } snake;
 
-// ç”¨æˆ·ä¿¡æ¯
+// ÓÃ»§ĞÅÏ¢
 typedef struct {
     int id;
     char username[32];
     char password[32];
 } User;
 
-// å…¨å±€å˜é‡
+// È«¾Ö±äÁ¿
 int score = 0, add = 10;
 int status, sleeptime = 200;
 snake *head, *food, *q;
-int endgamestatus = 0;
 User currentUser;
 time_t game_start_time;
 
-// å‡½æ•°å£°æ˜
+// ¶¨ÒåÓÎÏ·×´Ì¬
+enum GameState { MENU, PLAY, EXIT };
+
+// º¯ÊıÉùÃ÷
 void Pos(int x, int y);
 void creatMap();
 void initsnake();
 int biteself();
 void createfood();
-void cantcrosswall();
-void snakemove();
-void pause_game();
-void gamecircle();
+int snakemove();  // ÏÖÔÚ·µ»ØÅö×²Ô­Òò£º0=Õı³££¬1=×²Ç½£¬2=Ò§µ½×Ô¼º
 void welcometogame();
-void endgame();
+enum GameState endgame(int reason, int score);
 void gamestart();
 void loadOrRegisterUser();
-// int authenticateUser();
 void showUserLogs();
 void writeUserLog();
-int authenticateUser();  // ç™»å½•å‡½æ•°
-void registerUser();     // æ³¨å†Œå‡½æ•°
+enum GameState loginMenu();
+int authenticateUser();  // µÇÂ¼º¯Êı
+void registerUser();     // ×¢²áº¯Êı
 void initWorkingDirectory();
 
-// â€”â€” æ§åˆ¶å°å·¥å…· â€”â€” //
 void Pos(int x, int y) {
     COORD pos = { short(x), short(y) };
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
 
-// â€”â€” ç”¨æˆ·ç®¡ç† â€”â€” //
 void loadOrRegisterUser() {
     FILE *fp = fopen("users.dat", "rb+");
     if (!fp) {
-        // é¦–æ¬¡å¯åŠ¨ï¼Œåˆ›å»ºæ–‡ä»¶å¹¶æ³¨å†Œç¬¬ä¸€ä¸ªç”¨æˆ·
         fp = fopen("users.dat", "wb+");
-        printf("=== é¦–æ¬¡ä½¿ç”¨ï¼Œè¯·æ³¨å†Œæ–°ç”¨æˆ· ===\n");
+        printf("=== Ê×´ÎÊ¹ÓÃ£¬Çë×¢²áĞÂÓÃ»§ ===\n");
         currentUser.id = 1;
-        printf("ç”¨æˆ·å: "); scanf("%31s", currentUser.username);
-        printf("å¯†ç : "); scanf("%31s", currentUser.password);
+        printf("ÓÃ»§Ãû: "); scanf("%31s", currentUser.username);
+        printf("ÃÜÂë: "); scanf("%31s", currentUser.password);
         fwrite(&currentUser, sizeof(User), 1, fp);
         fclose(fp);
-        printf("æ³¨å†ŒæˆåŠŸï¼è¯·é‡å¯ç¨‹åºç™»å½•ã€‚\n");
+        printf("×¢²á³É¹¦£¡ÇëÖØÆô³ÌĞòµÇÂ¼¡£\n");
         exit(0);
     }
     fclose(fp);
 
-    // ç™»å½•æµç¨‹
     while (!authenticateUser()) {
-        printf("ç™»å½•å¤±è´¥ï¼Œè¯·é‡è¯•ã€‚\n");
+        printf("µÇÂ¼Ê§°Ü£¬ÇëÖØÊÔ¡£\n");
     }
 }
 
 void showUserLogs() {
     system("cls");
-    printf("=== ç”¨æˆ·æ—¥å¿— (ID, ç”¨æˆ·å, å¼€å§‹æ—¶é—´, æ—¶é•¿(s), å¾—åˆ†) ===\n\n");
+    printf("=== ÓÃ»§ÈÕÖ¾ (ID, ÓÃ»§Ãû, ¿ªÊ¼Ê±¼ä, Ê±³¤(s), µÃ·Ö) ===\n\n");
     FILE *lf = fopen("userlog.txt", "r");
     if (!lf) {
-        printf("æš‚æ— æ—¥å¿—ã€‚\n");
+        printf("ÔİÎŞÈÕÖ¾¡£\n");
     } else {
         char line[256];
         while (fgets(line, sizeof(line), lf)) {
@@ -93,13 +90,11 @@ void showUserLogs() {
         }
         fclose(lf);
     }
-    printf("\næŒ‰ä»»æ„é”®è¿”å›æ¸¸æˆâ€¦");
+    printf("\n°´ÈÎÒâ¼ü·µ»ØÓÎÏ·¡­");
     getch();
     system("cls");
-    gamestart();
 }
 
-// åœ¨æ¸¸æˆç»“æŸå‰å†™æ—¥å¿—
 void writeUserLog() {
     time_t end = time(NULL);
     double duration = difftime(end, game_start_time);
@@ -114,245 +109,22 @@ void writeUserLog() {
     fclose(lf);
 }
 
-void creatMap()//åˆ›å»ºåœ°å›¾
-{
-    int i;
-    for (i = 0; i < 58; i += 2)//æ‰“å°ä¸Šä¸‹è¾¹æ¡†
-    {
-        Pos(i, 0);
-        printf("â– ");
-        Pos(i, 26);
-        printf("â– ");
+void creatMap() {
+    for (int i = 0; i < 58; i += 2) {
+        Pos(i, 0);  printf("¡ö");
+        Pos(i, 26); printf("¡ö");
     }
-    for (i = 1; i < 26; i++)//æ‰“å°å·¦å³è¾¹æ¡†
-    {
-        Pos(0, i);
-        printf("â– ");
-        Pos(56, i);
-        printf("â– ");
+    for (int i = 1; i < 26; i++) {
+        Pos(0, i);  printf("¡ö");
+        Pos(56, i); printf("¡ö");
     }
 }
 
-int biteself()//åˆ¤æ–­æ˜¯å¦å’¬åˆ°äº†è‡ªå·±
-{
-    snake* self;
-    self = head->next;
-    while (self != NULL)
-    {
-        if (self->x == head->x && self->y == head->y)
-        {
-            return 1;
-        }
-        self = self->next;
-    }
-    return 0;
-}
-
-void createfood()//éšæœºå‡ºç°é£Ÿç‰©
-{
-    snake* food_1;
-    srand((unsigned)time(NULL));
-    food_1 = (snake*)malloc(sizeof(snake));
-    while ((food_1->x % 2) != 0)    //ä¿è¯å…¶ä¸ºå¶æ•°ï¼Œä½¿å¾—é£Ÿç‰©èƒ½ä¸è›‡å¤´å¯¹å…¶
-    {
-        food_1->x = rand() % 52 + 2;
-    }
-    food_1->y = rand() % 24 + 1;
-    q = head;
-    while (q->next == NULL)
-    {
-        if (q->x == food_1->x && q->y == food_1->y) //åˆ¤æ–­è›‡èº«æ˜¯å¦ä¸é£Ÿç‰©é‡åˆ
-        {
-            free(food_1);
-            createfood();
-        }
-        q = q->next;
-    }
-    Pos(food_1->x, food_1->y);
-    food = food_1;
-    printf("â– ");
-}
-
-void cantcrosswall()//ä¸èƒ½ç©¿å¢™
-{
-    if (head->x == 0 || head->x == 56 || head->y == 0 || head->y == 26)
-    {
-        endgamestatus = 1;
-        endgame();
-    }
-}
-
-void snakemove()//è›‡å‰è¿›,ä¸ŠU,ä¸‹D,å·¦L,å³R
-{
-    snake* nexthead;
-    cantcrosswall();
-
-    nexthead = (snake*)malloc(sizeof(snake));
-    if (status == U)
-    {
-        nexthead->x = head->x;
-        nexthead->y = head->y - 1;
-        if (nexthead->x == food->x && nexthead->y == food->y)//å¦‚æœä¸‹ä¸€ä¸ªæœ‰é£Ÿç‰©//
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            score = score + add;
-            createfood();
-        }
-        else                                               //å¦‚æœæ²¡æœ‰é£Ÿç‰©//
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q->next->next != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            Pos(q->next->x, q->next->y);
-            printf("  ");
-            free(q->next);
-            q->next = NULL;
-        }
-    }
-    if (status == D)
-    {
-        nexthead->x = head->x;
-        nexthead->y = head->y + 1;
-        if (nexthead->x == food->x && nexthead->y == food->y)  //æœ‰é£Ÿç‰©
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            score = score + add;
-            createfood();
-        }
-        else                               //æ²¡æœ‰é£Ÿç‰©
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q->next->next != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            Pos(q->next->x, q->next->y);
-            printf("  ");
-            free(q->next);
-            q->next = NULL;
-        }
-    }
-    if (status == L)
-    {
-        nexthead->x = head->x - 2;
-        nexthead->y = head->y;
-        if (nexthead->x == food->x && nexthead->y == food->y)//æœ‰é£Ÿç‰©
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            score = score + add;
-            createfood();
-        }
-        else                                //æ²¡æœ‰é£Ÿç‰©
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q->next->next != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            Pos(q->next->x, q->next->y);
-            printf("  ");
-            free(q->next);
-            q->next = NULL;
-        }
-    }
-    if (status == R)
-    {
-        nexthead->x = head->x + 2;
-        nexthead->y = head->y;
-        if (nexthead->x == food->x && nexthead->y == food->y)//æœ‰é£Ÿç‰©
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            score = score + add;
-            createfood();
-        }
-        else                                         //æ²¡æœ‰é£Ÿç‰©
-        {
-            nexthead->next = head;
-            head = nexthead;
-            q = head;
-            while (q->next->next != NULL)
-            {
-                Pos(q->x, q->y);
-                printf("â– ");
-                q = q->next;
-            }
-            Pos(q->next->x, q->next->y);
-            printf("  ");
-            free(q->next);
-            q->next = NULL;
-        }
-    }
-    if (biteself() == 1)       //åˆ¤æ–­æ˜¯å¦ä¼šå’¬åˆ°è‡ªå·±
-    {
-        endgamestatus = 2;
-        endgame();
-    }
-}
-
-void pause_game()//æš‚åœ
-{
-    while (1)
-    {
-        Sleep(300);
-        if (GetAsyncKeyState(VK_SPACE))
-        {
-            break;
-        }
-
-    }
-}
-
-void initsnake()//åˆå§‹åŒ–è›‡èº«
+void initsnake()//³õÊ¼»¯ÉßÉí
 {
     snake* tail;
     int i;
-    tail = (snake*)malloc(sizeof(snake));//ä»è›‡å°¾å¼€å§‹ï¼Œå¤´æ’æ³•ï¼Œä»¥x,yè®¾å®šå¼€å§‹çš„ä½ç½®//
+    tail = (snake*)malloc(sizeof(snake));//´ÓÉßÎ²¿ªÊ¼£¬Í·²å·¨£¬ÒÔx,yÉè¶¨¿ªÊ¼µÄÎ»ÖÃ//
     tail->x = 24;
     tail->y = 5;
     tail->next = NULL;
@@ -364,109 +136,187 @@ void initsnake()//åˆå§‹åŒ–è›‡èº«
         head->y = 5;
         tail = head;
     }
-    while (tail != NULL)//ä»å¤´åˆ°ä¸ºï¼Œè¾“å‡ºè›‡èº«
+    while (tail != NULL)//´ÓÍ·µ½Îª£¬Êä³öÉßÉí
     {
         Pos(tail->x, tail->y);
-        printf("â– ");
+        printf("¡ö");
         tail = tail->next;
     }
 }
 
-// æ¸¸æˆä¸»å¾ªç¯ï¼Œå¢åŠ  F5 å¤„ç† //
-void gamecircle() {
-    Pos(64, 15); printf("ä¸èƒ½ç©¿å¢™ï¼Œä¸èƒ½å’¬åˆ°è‡ªå·±");
-    Pos(64, 16); printf("ç”¨â†‘.â†“.â†.â†’åˆ†åˆ«æ§åˆ¶è›‡çš„ç§»åŠ¨.");
-    Pos(64, 17); printf("F1 åŠ é€Ÿ F2 å‡é€Ÿ F5 æ—¥å¿— ESC é€€å‡º SPACE æš‚åœ");
-    status = R;
-
-    while (1) {
-        // æ˜¾ç¤ºåˆ†æ•°ä¸ç”¨æˆ·çŠ¶æ€
-        Pos(64, 10); printf("å¾—åˆ†ï¼š%d  ", score);
-        // æ˜¾ç¤ºå½“å‰ç”¨æˆ·
-        Pos(2, 28); printf("***%sæ­£åœ¨æ¸¸æˆä¸­***", currentUser.username);
-        // æ£€æµ‹æŒ‰é”®
-        if (GetAsyncKeyState(VK_F5) & 0x8000) {
-            showUserLogs();
+int biteself() {
+    for (snake* s = head->next; s; s = s->next) {
+        if (s->x == head->x && s->y == head->y) {
+            return 1;
         }
-        
-        if (GetAsyncKeyState(VK_UP)    & 0x8000 && status != D) status = U;
-        else if (GetAsyncKeyState(VK_DOWN)  & 0x8000 && status != U) status = D;
-        else if (GetAsyncKeyState(VK_LEFT)  & 0x8000 && status != R) status = L;
-        else if (GetAsyncKeyState(VK_RIGHT) & 0x8000 && status != L) status = R;
-
-        if (GetAsyncKeyState(VK_ESCAPE)) {
-            endgamestatus = 3; break;
-        }
-        // æ§åˆ¶åŠ é€Ÿã€å‡é€ŸåŒåŸ
-        Sleep(sleeptime);
-        snakemove();
     }
+    return 0;
 }
 
-void welcometogame()//å¼€å§‹ç•Œé¢
+void createfood() {
+    snake* food_1 = (snake*)malloc(sizeof(snake));
+    srand((unsigned)time(NULL));
+    do {
+        food_1->x = (rand() % 26) * 2 + 2;  // ±£Ö¤Å¼Êı
+        food_1->y = rand() % 24 + 1;
+    } while ( /* ÓëÉßÉí³åÍ» */ ([&] {
+        for (q = head; q; q = q->next)
+            if (q->x == food_1->x && q->y == food_1->y)
+                return true;
+        return false;
+    }()));
+    food = food_1;
+    Pos(food->x, food->y);
+    printf("¡ö");
+}
+
+int snakemove() {
+    // ¼ÆËãÏÂÒ»¸öÍ·²¿×ø±ê
+    int nx = head->x, ny = head->y;
+    if (status == U)    ny--;
+    else if (status == D) ny++;
+    else if (status == L) nx -= 2;
+    else if (status == R) nx += 2;
+
+    // ×²Ç½¼ì²â
+    if (nx <= 0 || nx >= 56 || ny <= 0 || ny >= 26) {
+        return 1;  // ×²Ç½
+    }
+
+    // ĞÂÍ·½Úµã
+    snake* nexthead = (snake*)malloc(sizeof(snake));
+    nexthead->x = nx;
+    nexthead->y = ny;
+    nexthead->next = head;
+    head = nexthead;
+
+    // ³Ôµ½Ê³Îï£¿
+    if (nx == food->x && ny == food->y) {
+        score += add;
+        createfood();
+    } else {
+        // ÒÆ³ıÎ²½Úµã
+        q = head;
+        while (q->next->next) q = q->next;
+        Pos(q->next->x, q->next->y);
+        printf("  ");
+        free(q->next);
+        q->next = NULL;
+    }
+
+    // ×ÔÒ§¼ì²â
+    if (biteself()) {
+        return 2;
+    }
+
+    // ÖØ»­ÉßÉí
+    for (q = head; q; q = q->next) {
+        Pos(q->x, q->y);
+        printf("¡ö");
+    }
+    return 0;  // Ò»ÇĞÕı³£
+}
+
+void welcometogame()//¿ªÊ¼½çÃæ
 {
     Pos(40, 12);
-    printf("æ¬¢è¿æ¥åˆ°è´ªé£Ÿè›‡æ¸¸æˆï¼");
+    printf("»¶Ó­À´µ½Ì°Ê³ÉßÓÎÏ·£¡");
     Pos(40, 25);
     system("pause");
     system("cls");
     Pos(25, 12);
-    printf("ç”¨â†‘.â†“.â†.â†’åˆ†åˆ«æ§åˆ¶è›‡çš„ç§»åŠ¨ï¼Œ F1 ä¸ºåŠ é€Ÿï¼Œ2 ä¸ºå‡é€Ÿ\n");
+    printf("ÓÃ¡ü.¡ı.¡û.¡ú·Ö±ğ¿ØÖÆÉßµÄÒÆ¶¯£¬ F1 Îª¼ÓËÙ£¬2 Îª¼õËÙ\n");
     Pos(25, 13);
-    printf("åŠ é€Ÿå°†èƒ½å¾—åˆ°æ›´é«˜çš„åˆ†æ•°ã€‚\n");
+    printf("¼ÓËÙ½«ÄÜµÃµ½¸ü¸ßµÄ·ÖÊı¡£\n");
     system("pause");
     system("cls");
 }
 
-// ç»“æŸæ¸¸æˆï¼Œå†™æ—¥å¿—åé€€å‡º
-void endgame() {
+enum GameState endgame(int reason, int sc) {
     writeUserLog();
     system("cls");
     Pos(24, 12);
-    if (endgamestatus == 1)   printf("æ’å¢™äº†ã€‚æ¸¸æˆç»“æŸ!\n");
-    else if (endgamestatus == 2) printf("å’¬åˆ°è‡ªå·±äº†ã€‚æ¸¸æˆç»“æŸ!\n");
-    else if (endgamestatus == 3) printf("ä¸»åŠ¨é€€å‡ºã€‚å†è§!\n");
-    Pos(24, 13); printf("æ‚¨çš„å¾—åˆ†æ˜¯%d\n", score);
-    exit(0);
+    if (reason == 1)      printf("×²Ç½ÁË¡£ÓÎÏ·½áÊø!\n");
+    else if (reason == 2) printf("Ò§µ½×Ô¼ºÁË¡£ÓÎÏ·½áÊø!\n");
+    else if (reason == 3) printf("Ö÷¶¯ÍË³ö¡£ÔÙ¼û!\n");
+    Pos(24, 13);
+    cout << "ÄúµÄµÃ·ÖÊÇ" << sc << endl;
+    system("pause");
+    return MENU;
 }
 
-// ç•Œé¢åˆå§‹åŒ–åŒåŸ
 void gamestart() {
     system("mode con cols=100 lines=30");
-    welcometogame();
+    // »¶Ó­½çÃæÂÔ¡­
+    system("cls");
     creatMap();
     initsnake();
     createfood();
+    game_start_time = time(NULL);
 }
 
-void loginMenu() {
-    int choice;
-    while (1) {
-        system("cls");
-        printf("===== è´ªåƒè›‡æ¸¸æˆç™»å½•ç³»ç»Ÿ =====\n");
-        printf("1. ç™»å½•\n");
-        printf("2. æ³¨å†Œæ–°ç”¨æˆ·\n");
-        printf("3. é€€å‡º\n");
-        printf("è¯·é€‰æ‹©æ“ä½œï¼š");
-        scanf("%d", &choice);
-        getchar(); // å¸æ”¶æ¢è¡Œ
+enum GameState gamecircle() {
+    Pos(64, 15); printf("²»ÄÜ´©Ç½£¬²»ÄÜÒ§µ½×Ô¼º");
+    Pos(64, 16); printf("¡ü¡ı¡û¡ú ¿ØÖÆÒÆ¶¯£¬F1 ¼ÓËÙ F2 ¼õËÙ F5 ÈÕÖ¾ ESC ÍË³ö SPACE ÔİÍ£");
+    status = R;
 
-        if (choice == 1) {
+    while (true) {
+        Pos(64, 10); printf("µÃ·Ö£º%d  ", score);
+        Pos(2, 28);   printf("***%s ÕıÔÚÓÎÏ·ÖĞ***", currentUser.username);
+
+        if (GetAsyncKeyState(VK_F5) & 0x8000) {
+            showUserLogs();
+            system("cls");
+            creatMap(); // ÖØĞÂ»­µØÍ¼ºÍÉß
+            for (q = head; q; q = q->next) { Pos(q->x,q->y); printf("¡ö"); }
+            Pos(food->x, food->y); printf("¡ö");
+        }
+        if (GetAsyncKeyState(VK_UP)    & 0x8000 && status != D) status = U;
+        if (GetAsyncKeyState(VK_DOWN)  & 0x8000 && status != U) status = D;
+        if (GetAsyncKeyState(VK_LEFT)  & 0x8000 && status != R) status = L;
+        if (GetAsyncKeyState(VK_RIGHT) & 0x8000 && status != L) status = R;
+
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+            return endgame(3, score);
+        }
+        Sleep(sleeptime);
+        int reason = snakemove();
+        if (reason != 0) {
+            return endgame(reason, score);
+        }
+    }
+}
+
+enum GameState loginMenu() {
+    int choice;
+    while (true) {
+        system("cls");
+        printf("===== Ì°³ÔÉßÓÎÏ·µÇÂ¼ÏµÍ³ =====\n");
+        printf("1. µÇÂ¼\n2. ×¢²áĞÂÓÃ»§\n3. ÍË³ö\n");
+        printf("ÇëÑ¡Ôñ²Ù×÷£º");
+        if (scanf("%d", &choice) != 1) {
+            while (getchar()!='\n');
+            continue;
+        }
+        getchar();
+        switch (choice) {
+        case 1:
             if (authenticateUser()) {
-                printf("ç™»å½•æˆåŠŸï¼æ¬¢è¿ï¼Œ%sã€‚\n", currentUser.username);
+                printf("µÇÂ¼³É¹¦£¡»¶Ó­£¬%s¡£\n", currentUser.username);
                 Sleep(1000);
-                break;
+                return PLAY;
             } else {
-                printf("ç™»å½•å¤±è´¥ã€‚æŒ‰ä»»æ„é”®ç»§ç»­ã€‚\n");
+                printf("µÇÂ¼Ê§°Ü¡£°´ÈÎÒâ¼ü¼ÌĞø¡£\n");
                 getchar();
             }
-        } else if (choice == 2) {
+            break;
+        case 2:
             registerUser();
-        } else if (choice == 3) {
-            printf("æ„Ÿè°¢ä½¿ç”¨ï¼Œå†è§ï¼\n");
-            exit(0);
-        } else {
-            printf("æ— æ•ˆé€‰é¡¹ï¼Œè¯·é‡è¯•ã€‚\n");
+            break;
+        case 3:
+            return EXIT;
+        default:
+            printf("ÎŞĞ§Ñ¡Ïî£¬ÇëÖØÊÔ¡£\n");
             Sleep(1000);
         }
     }
@@ -474,18 +324,17 @@ void loginMenu() {
 
 int authenticateUser() {
     char uname[32], pwd[32];
-    printf("ç”¨æˆ·å: "); scanf("%31s", uname);
-    printf("å¯†ç : "); scanf("%31s", pwd);
+    printf("ÓÃ»§Ãû: "); scanf("%31s", uname);
+    printf("ÃÜÂë: "); scanf("%31s", pwd);
 
     FILE *fp = fopen("users.dat", "rb");
     if (!fp) return 0;
-
     User u;
-    while (fread(&u, sizeof(User), 1, fp) == 1) {
-        if (strcmp(u.username, uname) == 0 && strcmp(u.password, pwd) == 0) {
+    while (fread(&u, sizeof(u), 1, fp)) {
+        if (strcmp(u.username, uname)==0 && strcmp(u.password, pwd)==0) {
             currentUser = u;
             fclose(fp);
-            return 1;  // ç™»å½•æˆåŠŸ
+            return 1;
         }
     }
     fclose(fp);
@@ -494,48 +343,43 @@ int authenticateUser() {
 
 void registerUser() {
     char uname[32], pwd[32];
-    printf("è¯·è¾“å…¥æ–°ç”¨æˆ·å: "); scanf("%31s", uname);
-    printf("è¯·è¾“å…¥å¯†ç : "); scanf("%31s", pwd);
+    printf("ÇëÊäÈëĞÂÓÃ»§Ãû: "); scanf("%31s", uname);
+    printf("ÇëÊäÈëÃÜÂë: "); scanf("%31s", pwd);
 
     FILE *fp = fopen("users.dat", "ab+");
     if (!fp) {
-        printf("æ— æ³•æ‰“å¼€ç”¨æˆ·æ–‡ä»¶ï¼\n");
+        printf("ÎŞ·¨´ò¿ªÓÃ»§ÎÄ¼ş£¡\n");
         return;
     }
-
     fseek(fp, 0, SEEK_END);
-    long size = ftell(fp);
-    int new_id = (int)(size / sizeof(User)) + 1;
-
-    User newUser;
-    newUser.id = new_id;
-    strcpy(newUser.username, uname);
-    strcpy(newUser.password, pwd);
-    fwrite(&newUser, sizeof(User), 1, fp);
+    int new_id = ftell(fp)/sizeof(User) + 1;
+    User nu = { new_id, "", "" };
+    strcpy(nu.username, uname);
+    strcpy(nu.password, pwd);
+    fwrite(&nu, sizeof(nu), 1, fp);
     fclose(fp);
-
-    printf("æ³¨å†ŒæˆåŠŸï¼è¯·ä½¿ç”¨æ–°è´¦æˆ·ç™»å½•ã€‚\n");
+    printf("×¢²á³É¹¦£¡ÇëÊ¹ÓÃĞÂÕË»§µÇÂ¼¡£\n");
     Sleep(1000);
 }
 
 void initWorkingDirectory() {
     char path[MAX_PATH];
-    // å–å‡ºå½“å‰ exe çš„å®Œæ•´è·¯å¾„
     GetModuleFileNameA(NULL, path, MAX_PATH);
-    // æ‰¾åˆ°æœ€åä¸€ä¸ª '\'ï¼ŒæŠŠå®ƒä¹‹åçš„ exe æ–‡ä»¶åæˆªæ‰
     char *p = strrchr(path, '\\');
     if (p) *p = '\0';
-    // æŠŠå½“å‰å·¥ä½œç›®å½•åˆ‡æ¢åˆ° exe æ‰€åœ¨çš„æ–‡ä»¶å¤¹
     SetCurrentDirectoryA(path);
 }
 
 int main() {
-    // åˆ‡åˆ° exe åŒç›®å½•ï¼ˆ .cpp æ‰€åœ¨ç›®å½•ï¼‰
     initWorkingDirectory();
-    loginMenu();
-    game_start_time = time(NULL);
-    gamestart();
-    gamecircle();
-    endgame();
+    GameState state = MENU;
+    while (state != EXIT) {
+        if (state == MENU) {
+            state = loginMenu();
+        } else if (state == PLAY) {
+            gamestart();
+            state = gamecircle();
+        }
+    }
     return 0;
 }
