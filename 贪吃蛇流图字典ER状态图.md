@@ -1,8 +1,7 @@
 ***\*数据流图：\****
 
 ***\*顶层数据流图\*******\*：\****
-(https://github.com/zmq258/Tanchishe/blob/main/images/%E5%9B%BE%E7%89%872.png)](https://s21.ax1x.com/2025/04/21/pE5Gfk8.png)
-
+https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
 解释：
 
   玩家：作为外部实体，向贪吃蛇系统输入操作，如登录、注册、游戏控制等。
