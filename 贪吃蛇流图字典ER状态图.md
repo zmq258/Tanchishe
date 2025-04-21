@@ -2,7 +2,7 @@
 
 ***\*顶层数据流图\*******\*：\****
 
-![图片2](C:\Users\23830\Desktop\图片2.png)
+[![图片2](C:\Users\23830\Desktop\图片2.png)](https://github.com/zmq258/Tanchishe/blob/main/images/%E5%9B%BE%E7%89%872.png)
 
 解释：
 
