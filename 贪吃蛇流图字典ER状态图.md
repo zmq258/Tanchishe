@@ -3,6 +3,7 @@
 ***\*顶层数据流图\*******\*：\****
 
 https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
+
 解释：
 
   玩家：作为外部实体，向贪吃蛇系统输入操作，如登录、注册、游戏控制等。
@@ -21,7 +22,7 @@ https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
 
  
 
-![img](file:///C:\Users\23830\AppData\Local\Temp\ksohtml15920\wps9.jpg) 
+https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
 
 解释：
 
@@ -43,7 +44,7 @@ https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
 
 ***\*第二层数据流图 - 用户认证模块细化\*******\*：\****
 
-![图片3](C:\Users\23830\Desktop\图片3.png)
+https://s21.ax1x.com/2025/04/21/pE5JPn1.png
 
 解释：
 
@@ -69,7 +70,7 @@ https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
 
 ***\*第二层数据流图 - 游戏逻辑模块细化：\****
 
- ![图片4](C:\Users\23830\Desktop\图片4.png)
+https://s21.ax1x.com/2025/04/21/pE5G4fg.png
 
 解释：
 
@@ -221,7 +222,7 @@ https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
 
  
 
- ![图片5](C:\Users\23830\Desktop\图片5.png)
+https://s21.ax1x.com/2025/04/21/pE5GhtS.md.png
 
 解释：
 
@@ -296,8 +297,7 @@ https://s21.ax1x.com/2025/04/21/pE5Gfk8.png
 ***\*状态图：\****
 
  
-
- ![图片6](C:\Users\23830\Desktop\图片6.png)
+https://s21.ax1x.com/2025/04/21/pE5GIpQ.png
 
 解释
 
