@@ -95,18 +95,36 @@ void showUserLogs() {
 }
 
 void writeUserLog() {
-    time_t end = time(NULL);
-    double duration = difftime(end, game_start_time);
-    struct tm *tm_start = gmtime(&game_start_time);
-    char buf[32];
-    strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", tm_start);
+    // 获取结束时刻
+    time_t end_time = time(NULL);
 
+    // 计算时长（秒）
+    double duration = difftime(end_time, game_start_time);
+
+    // 本地时间结构
+    struct tm *tm_start = localtime(&game_start_time);
+    struct tm *tm_end   = localtime(&end_time);
+
+    // 格式化成 "YYYY-MM-DD HH:MM:SS"
+    char buf_start[32], buf_end[32];
+    strftime(buf_start, sizeof(buf_start), "%Y-%m-%d %H:%M:%S", tm_start);
+    strftime(buf_end,   sizeof(buf_end),   "%Y-%m-%d %H:%M:%S", tm_end);
+
+    // 追加写入日志
     FILE *lf = fopen("userlog.txt", "a");
-    fprintf(lf, "%d, %s, %s, %.0f, %d\n",
-            currentUser.id, currentUser.username,
-            buf, duration, score);
-    fclose(lf);
+    if (lf) {
+        // 格式：ID, 用户名, 开始时间, 结束时间, 时长(s), 得分
+        fprintf(lf, "%d, %s, %s, %s, %.0f, %d\n",
+                currentUser.id,
+                currentUser.username,
+                buf_start,
+                buf_end,
+                duration,
+                score);
+        fclose(lf);
+    }
 }
+
 
 void creatMap() {
     for (int i = 0; i < 58; i += 2) {
@@ -342,25 +360,93 @@ int authenticateUser() {
 }
 
 void registerUser() {
-    char uname[32], pwd[32];
-    printf("请输入新用户名: "); scanf("%31s", uname);
-    printf("请输入密码: "); scanf("%31s", pwd);
-
-    FILE *fp = fopen("users.dat", "ab+");
+    // —— 第一步：确保 users.dat 和 userlog.txt 存在 —— 
+    // 如果 users.dat 不存在，就创建一个空文件
+    FILE* fp = fopen("users.dat", "rb");
     if (!fp) {
-        printf("无法打开用户文件！\n");
-        return;
+        fp = fopen("users.dat", "wb");
+        if (!fp) {
+            printf("无法创建 users.dat！请检查权限。\n");
+            system("pause");
+            return;
+        }
+        fclose(fp);
+    } else {
+        fclose(fp);
     }
-    fseek(fp, 0, SEEK_END);
-    int new_id = ftell(fp)/sizeof(User) + 1;
-    User nu = { new_id, "", "" };
-    strcpy(nu.username, uname);
-    strcpy(nu.password, pwd);
-    fwrite(&nu, sizeof(nu), 1, fp);
-    fclose(fp);
-    printf("注册成功！请使用新账户登录。\n");
-    Sleep(1000);
+    // 如果 userlog.txt 不存在，也创建一个空文件
+    fp = fopen("userlog.txt", "r");
+    if (!fp) {
+        fp = fopen("userlog.txt", "w");
+        if (!fp) {
+            printf("无法创建 userlog.txt！请检查权限。\n");
+            system("pause");
+            return;
+        }
+        fclose(fp);
+    } else {
+        fclose(fp);
+    }
+
+    char uname[32], pwd[32];
+    while (true) {
+        // —— 第二步：输入用户名并检测重复 —— 
+        printf("请输入新用户名: ");
+        scanf("%31s", uname);
+
+        // 打开 users.dat，检查是否已有同名用户
+        fp = fopen("users.dat", "rb");
+        if (!fp) {
+            printf("无法打开 users.dat 进行检查。\n");
+            system("pause");
+            return;
+        }
+        User u;
+        bool exists = false;
+        while (fread(&u, sizeof(u), 1, fp)) {
+            if (strcmp(u.username, uname) == 0) {
+                exists = true;
+                break;
+            }
+        }
+        fclose(fp);
+
+        if (exists) {
+            printf("用户名 \"%s\" 已被注册，请换一个用户名。\n\n", uname);
+            system("pause");
+            continue;
+        }
+
+        // —— 第三步：输入密码，追加写入 users.dat —— 
+        printf("请输入密码: ");
+        scanf("%31s", pwd);
+
+        fp = fopen("users.dat", "ab+");
+        if (!fp) {
+            printf("无法打开 users.dat 进行写入！\n");
+            system("pause");
+            return;
+        }
+        // 计算新用户 ID
+        fseek(fp, 0, SEEK_END);
+        int new_id = ftell(fp) / sizeof(User) + 1;
+
+        User nu;
+        nu.id = new_id;
+        strncpy(nu.username, uname, sizeof(nu.username)-1);
+        nu.username[sizeof(nu.username)-1] = '\0';
+        strncpy(nu.password, pwd, sizeof(nu.password)-1);
+        nu.password[sizeof(nu.password)-1] = '\0';
+
+        fwrite(&nu, sizeof(nu), 1, fp);
+        fclose(fp);
+
+        printf("注册成功！请使用新账户登录。\n");
+        Sleep(1000);
+        break;
+    }
 }
+
 
 void initWorkingDirectory() {
     char path[MAX_PATH];
