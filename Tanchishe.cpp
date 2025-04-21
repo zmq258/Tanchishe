@@ -42,15 +42,16 @@ int biteself();
 void createfood();
 int snakemove();  // 现在返回碰撞原因：0=正常，1=撞墙，2=咬到自己
 void welcometogame();
-enum GameState endgame(int reason, int score);
+enum GameState endgame(int reason, int sc);
 void gamestart();
+enum GameState gamecircle();
 void loadOrRegisterUser();
-void showUserLogs();
-void writeUserLog();
 enum GameState loginMenu();
 int authenticateUser();  // 登录函数
 void registerUser();     // 注册函数
 void initWorkingDirectory();
+void showUserLogs();
+void writeUserLog();
 
 void Pos(int x, int y) {
     COORD pos = { short(x), short(y) };
@@ -90,9 +91,7 @@ void showUserLogs() {
         }
         fclose(lf);
     }
-    printf("\n按任意键返回游戏…");
-    getch();
-    system("cls");
+    system("pause");
 }
 
 void writeUserLog() {
@@ -120,35 +119,28 @@ void creatMap() {
     }
 }
 
-void initsnake()//初始化蛇身
-{
+void initsnake() {
     snake* tail;
-    int i;
-    tail = (snake*)malloc(sizeof(snake));//从蛇尾开始，头插法，以x,y设定开始的位置//
+    tail = (snake*)malloc(sizeof(snake));
     tail->x = 24;
     tail->y = 5;
     tail->next = NULL;
-    for (i = 1; i <= 4; i++)
-    {
+    for (int i = 1; i <= 4; i++) {
         head = (snake*)malloc(sizeof(snake));
         head->next = tail;
         head->x = 24 + 2 * i;
         head->y = 5;
         tail = head;
     }
-    while (tail != NULL)//从头到为，输出蛇身
-    {
-        Pos(tail->x, tail->y);
+    for (snake* p = tail; p; p = p->next) {
+        Pos(p->x, p->y);
         printf("■");
-        tail = tail->next;
     }
 }
 
 int biteself() {
     for (snake* s = head->next; s; s = s->next) {
-        if (s->x == head->x && s->y == head->y) {
-            return 1;
-        }
+        if (s->x == head->x && s->y == head->y) return 1;
     }
     return 0;
 }
@@ -157,45 +149,38 @@ void createfood() {
     snake* food_1 = (snake*)malloc(sizeof(snake));
     srand((unsigned)time(NULL));
     do {
-        food_1->x = (rand() % 26) * 2 + 2;  // 保证偶数
+        food_1->x = (rand() % 26) * 2 + 2;
         food_1->y = rand() % 24 + 1;
-    } while ( /* 与蛇身冲突 */ ([&] {
+    } while ([&] {
         for (q = head; q; q = q->next)
             if (q->x == food_1->x && q->y == food_1->y)
                 return true;
         return false;
-    }()));
+    }());
     food = food_1;
     Pos(food->x, food->y);
     printf("■");
 }
 
 int snakemove() {
-    // 计算下一个头部坐标
     int nx = head->x, ny = head->y;
     if (status == U)    ny--;
     else if (status == D) ny++;
     else if (status == L) nx -= 2;
     else if (status == R) nx += 2;
 
-    // 撞墙检测
-    if (nx <= 0 || nx >= 56 || ny <= 0 || ny >= 26) {
-        return 1;  // 撞墙
-    }
+    if (nx <= 0 || nx >= 56 || ny <= 0 || ny >= 26) return 1;
 
-    // 新头节点
     snake* nexthead = (snake*)malloc(sizeof(snake));
     nexthead->x = nx;
     nexthead->y = ny;
     nexthead->next = head;
     head = nexthead;
 
-    // 吃到食物？
     if (nx == food->x && ny == food->y) {
         score += add;
         createfood();
     } else {
-        // 移除尾节点
         q = head;
         while (q->next->next) q = q->next;
         Pos(q->next->x, q->next->y);
@@ -204,50 +189,60 @@ int snakemove() {
         q->next = NULL;
     }
 
-    // 自咬检测
-    if (biteself()) {
-        return 2;
-    }
+    if (biteself()) return 2;
 
-    // 重画蛇身
     for (q = head; q; q = q->next) {
         Pos(q->x, q->y);
         printf("■");
     }
-    return 0;  // 一切正常
+    return 0;
 }
 
-void welcometogame()//开始界面
-{
+void welcometogame() {
     Pos(40, 12);
     printf("欢迎来到贪食蛇游戏！");
     Pos(40, 25);
     system("pause");
     system("cls");
     Pos(25, 12);
-    printf("用↑.↓.←.→分别控制蛇的移动， F1 为加速，2 为减速\n");
+    printf("↑ ↓ ← → 分别控制蛇的移动，F1 加速，F2 减速\n");
     Pos(25, 13);
     printf("加速将能得到更高的分数。\n");
     system("pause");
     system("cls");
 }
 
+// 修改：结束游戏后选择重新登录、再来一局或退出
 enum GameState endgame(int reason, int sc) {
     writeUserLog();
     system("cls");
     Pos(24, 12);
     if (reason == 1)      printf("撞墙了。游戏结束!\n");
     else if (reason == 2) printf("咬到自己了。游戏结束!\n");
-    else if (reason == 3) printf("主动退出。再见!\n");
+    else if (reason == 3) printf("主动退出。\n");
     Pos(24, 13);
-    cout << "您的得分是" << sc << endl;
-    system("pause");
-    return MENU;
+    cout << "您的得分是 " << sc << endl;
+    Pos(24, 15);
+    printf("1. 重新登录  2. 再来一局  3. 退出\n");
+    printf("请选择: ");
+    int choice;
+    while (true) {
+        if (scanf("%d", &choice) != 1) {
+            while (getchar()!='\n');
+            continue;
+        }
+        switch (choice) {
+            case 1: return MENU;
+            case 2: return PLAY;
+            case 3: return EXIT;
+            default:
+                printf("无效选择，请重新输入: ");
+        }
+    }
 }
 
 void gamestart() {
     system("mode con cols=100 lines=30");
-    // 欢迎界面略…
     system("cls");
     creatMap();
     initsnake();
@@ -267,10 +262,11 @@ enum GameState gamecircle() {
         if (GetAsyncKeyState(VK_F5) & 0x8000) {
             showUserLogs();
             system("cls");
-            creatMap(); // 重新画地图和蛇
+            creatMap();
             for (q = head; q; q = q->next) { Pos(q->x,q->y); printf("■"); }
             Pos(food->x, food->y); printf("■");
         }
+
         if (GetAsyncKeyState(VK_UP)    & 0x8000 && status != D) status = U;
         if (GetAsyncKeyState(VK_DOWN)  & 0x8000 && status != U) status = D;
         if (GetAsyncKeyState(VK_LEFT)  & 0x8000 && status != R) status = L;
@@ -287,12 +283,13 @@ enum GameState gamecircle() {
     }
 }
 
+// 修改：登录界面增加查看日志选项
 enum GameState loginMenu() {
     int choice;
     while (true) {
         system("cls");
         printf("===== 贪吃蛇游戏登录系统 =====\n");
-        printf("1. 登录\n2. 注册新用户\n3. 退出\n");
+        printf("1. 登录\n2. 注册新用户\n3. 查看日志\n4. 退出\n");
         printf("请选择操作：");
         if (scanf("%d", &choice) != 1) {
             while (getchar()!='\n');
@@ -314,6 +311,9 @@ enum GameState loginMenu() {
             registerUser();
             break;
         case 3:
+            showUserLogs();
+            break;
+        case 4:
             return EXIT;
         default:
             printf("无效选项，请重试。\n");
@@ -377,6 +377,7 @@ int main() {
         if (state == MENU) {
             state = loginMenu();
         } else if (state == PLAY) {
+            score = 0; // 重置分数
             gamestart();
             state = gamecircle();
         }
