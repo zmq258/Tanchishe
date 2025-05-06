@@ -63,5 +63,3 @@
 - 去掉原先的方向判断，把移动调用 `snakemove()` 改用 `direction.load()`。
 
 (4) **`snakemove()`**：把 `if (GetAsyncKeyState…)` 块删掉，改为 `switch(direction.load())`。
-=======
->>>>>>> 7c9e95f8e788029d30e86cf960956942ab27738d
