@@ -29,7 +29,7 @@
 
 (4) **将 `loginMenu()` 重构为状态机方法**，使用 `GameState` 枚举来表示用户选择：
 
-- **`PLAY`**表示登录成功，进入游戏循环；
+- **`PLAY`** 表示登录成功，进入游戏循环；
 - **`EXIT_PROGRAM`** 表示用户选择退出，程序应终止；
 - **`loginMenu()`** 第三项“退出”不再直接 `exit(0)`，而是返回 `EXIT`，由 `main()` 退出主循环。
 
@@ -44,3 +44,21 @@
 4.修改了`registerUser()`。先检查`userlog.txt`和`user.dat`这两个文件是否存在，如果不存在就先创建它们，再做后续的用户名检测和写入。
 
 5.修改了`registerUser()` 函数，注册时会先扫描 `users.dat` 中已有的用户名，如果发现重复就提示“用户名已被注册”，并让用户重新输入。
+
+6.修改了`snakemove()`函数中的绘制蛇身的逻辑，不用重新绘制整条蛇身，而是只重绘头和尾。这样优化后，每次移动只会更新蛇头和蛇尾两个位置，刷新效率大幅提升。
+
+7.仅在程序启动时调用 `srand()`，将 `srand((unsigned)time(NULL));` 移到 `main()` 函数中。
+
+8.使用独立线程监听按键
+
+(1) **新增 `keyListener`**：独立线程循环里用 `GetAsyncKeyState` 非阻塞地读取方向、暂停（SPACE）、退出（ESC）、加减速（F1/F2），并写入原子变量 `direction`、`pauseFlag`、`exitFlag`。
+
+(2) **`gamestart()` 启动线程**：`std::thread t(keyListener); t.detach();`。
+
+(3) **`gamecircle()`**：
+
+- 每轮检查 `exitFlag` 强制退出；
+- 检查 `pauseFlag` 暂停循环；
+- 去掉原先的方向判断，把移动调用 `snakemove()` 改用 `direction.load()`。
+
+(4) **`snakemove()`**：把 `if (GetAsyncKeyState…)` 块删掉，改为 `switch(direction.load())`。

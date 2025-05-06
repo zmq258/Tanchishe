@@ -5,7 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <conio.h>
+#include <thread>
+#include <atomic>
 using namespace std;
+
+// 控制台尺寸（含边框）
+constexpr int CONSOLE_WIDTH  = 60;
+constexpr int CONSOLE_HEIGHT = 30;
 
 #define U 1
 #define D 2
@@ -26,10 +32,17 @@ typedef struct {
 
 // 全局变量
 int score = 0, add = 10;
-int status, sleeptime = 200;
+int sleeptime = 100;
 snake *head, *food, *q;
 User currentUser;
 time_t game_start_time;
+const int SPEED_MAX = 50;   // 最快时 Sleep(50)
+const int SPEED_MIN = 500;  // 最慢时 Sleep(500)
+const int SPEED_STEP = 20;  // 每次加速/减速的步长
+atomic<int> direction(R);
+atomic<int> status{R};        // 当前按键方向状态
+atomic<bool> exitFlag(false);
+atomic<bool> pauseFlag(false);
 
 // 定义游戏状态
 enum GameState { MENU, PLAY, EXIT };
@@ -52,10 +65,47 @@ void registerUser();     // 注册函数
 void initWorkingDirectory();
 void showUserLogs();
 void writeUserLog();
+void keyListener();
 
 void Pos(int x, int y) {
     COORD pos = { short(x), short(y) };
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+}
+
+// 按键监听函数：不断轮询并更新 direction 状态
+void keyListener() {
+    while (!exitFlag.load()) {
+        // 方向
+        if (GetAsyncKeyState(VK_UP)    & 0x8000 && direction.load() != D) direction.store(U);
+        if (GetAsyncKeyState(VK_DOWN)  & 0x8000 && direction.load() != U) direction.store(D);
+        if (GetAsyncKeyState(VK_LEFT)  & 0x8000 && direction.load() != R) direction.store(L);
+        if (GetAsyncKeyState(VK_RIGHT) & 0x8000 && direction.load() != L) direction.store(R);
+
+        // 暂停切换
+        if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+            pauseFlag.store(!pauseFlag.load());
+            // 简单防抖：等松开再继续
+            while (GetAsyncKeyState(VK_SPACE) & 0x8000) std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+
+        // 退出
+        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+            exitFlag.store(true);
+            break;
+        }
+
+        // 加速／减速
+        if (GetAsyncKeyState(VK_F1) & 0x8000) {
+            sleeptime = std::max(SPEED_MAX, sleeptime - SPEED_STEP);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        if (GetAsyncKeyState(VK_F2) & 0x8000) {
+            sleeptime = std::min(SPEED_MIN, sleeptime + SPEED_STEP);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 }
 
 void loadOrRegisterUser() {
@@ -165,7 +215,7 @@ int biteself() {
 
 void createfood() {
     snake* food_1 = (snake*)malloc(sizeof(snake));
-    srand((unsigned)time(NULL));
+    // srand((unsigned)time(NULL));
     do {
         food_1->x = (rand() % 26) * 2 + 2;
         food_1->y = rand() % 24 + 1;
@@ -181,38 +231,50 @@ void createfood() {
 }
 
 int snakemove() {
+    // 计算新头坐标
     int nx = head->x, ny = head->y;
-    if (status == U)    ny--;
-    else if (status == D) ny++;
-    else if (status == L) nx -= 2;
-    else if (status == R) nx += 2;
+    switch (direction.load()) {
+        case U: ny--; break;
+        case D: ny++; break;
+        case L: nx -= 2; break;
+        case R: nx += 2; break;
+    }
 
-    if (nx <= 0 || nx >= 56 || ny <= 0 || ny >= 26) return 1;
+    // 碰墙检测
+    if (nx <= 0 || nx >= 56 || ny <= 0 || ny >= 26) 
+        return 1;
 
-    snake* nexthead = (snake*)malloc(sizeof(snake));
-    nexthead->x = nx;
-    nexthead->y = ny;
-    nexthead->next = head;
-    head = nexthead;
+    // 创建新头节点
+    snake* newHead = (snake*)malloc(sizeof(snake));
+    newHead->x = nx;
+    newHead->y = ny;
+    newHead->next = head;
+    head = newHead;
 
+    // 画出新头
+    Pos(head->x, head->y);
+    printf("■");
+
+    // 如果吃到食物，就不删尾，并生成新食物
     if (nx == food->x && ny == food->y) {
         score += add;
         createfood();
     } else {
-        q = head;
-        while (q->next->next) q = q->next;
-        Pos(q->next->x, q->next->y);
-        printf("  ");
-        free(q->next);
-        q->next = NULL;
+        // 否则擦除最后一个尾巴
+        snake* p = head;
+        while (p->next->next) 
+            p = p->next;
+        // p->next 为尾节点
+        Pos(p->next->x, p->next->y);
+        printf("  ");    // 用空格“擦除”尾部
+        free(p->next);
+        p->next = NULL;
     }
 
-    if (biteself()) return 2;
+    // 自咬检测
+    if (biteself()) 
+        return 2;
 
-    for (q = head; q; q = q->next) {
-        Pos(q->x, q->y);
-        printf("■");
-    }
     return 0;
 }
 
@@ -266,40 +328,52 @@ void gamestart() {
     initsnake();
     createfood();
     game_start_time = time(NULL);
+    // 启动按键监听线程
+    std::thread t(keyListener);
+    t.detach();
 }
 
 enum GameState gamecircle() {
     Pos(64, 15); printf("不能穿墙，不能咬到自己");
     Pos(64, 16); printf("↑↓←→ 控制移动，F1 加速 F2 减速 F5 日志 ESC 退出 SPACE 暂停");
-    status = R;
 
     while (true) {
+        if (exitFlag.load()) {
+            // 用户按 ESC 强制退出
+            return endgame(3, score);
+        }
+
+        // 暂停处理
+        if (pauseFlag.load()) {
+            Pos(64, 18); printf("== PAUSED == Press SPACE to resume");
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
+
+        // 显示得分和玩家
         Pos(64, 10); printf("得分：%d  ", score);
         Pos(2, 28);   printf("***%s 正在游戏中***", currentUser.username);
 
+        // 查看日志（保留 F5 原逻辑）
         if (GetAsyncKeyState(VK_F5) & 0x8000) {
             showUserLogs();
             system("cls");
             creatMap();
+            // 重画蛇和食物
             for (q = head; q; q = q->next) { Pos(q->x,q->y); printf("■"); }
             Pos(food->x, food->y); printf("■");
         }
 
-        if (GetAsyncKeyState(VK_UP)    & 0x8000 && status != D) status = U;
-        if (GetAsyncKeyState(VK_DOWN)  & 0x8000 && status != U) status = D;
-        if (GetAsyncKeyState(VK_LEFT)  & 0x8000 && status != R) status = L;
-        if (GetAsyncKeyState(VK_RIGHT) & 0x8000 && status != L) status = R;
-
-        if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
-            return endgame(3, score);
-        }
-        Sleep(sleeptime);
-        int reason = snakemove();
+        // 移动一格
+        int reason = snakemove();  // 内部使用 status 或 direction
         if (reason != 0) {
             return endgame(reason, score);
         }
+
+        Sleep(sleeptime);
     }
 }
+
 
 // 修改：登录界面增加查看日志选项
 enum GameState loginMenu() {
@@ -360,7 +434,7 @@ int authenticateUser() {
 }
 
 void registerUser() {
-    // —— 第一步：确保 users.dat 和 userlog.txt 存在 —— 
+    // 第一步：确保 users.dat 和 userlog.txt 存在
     // 如果 users.dat 不存在，就创建一个空文件
     FILE* fp = fopen("users.dat", "rb");
     if (!fp) {
@@ -390,7 +464,7 @@ void registerUser() {
 
     char uname[32], pwd[32];
     while (true) {
-        // —— 第二步：输入用户名并检测重复 —— 
+        // 第二步：输入用户名并检测重复
         printf("请输入新用户名: ");
         scanf("%31s", uname);
 
@@ -417,7 +491,7 @@ void registerUser() {
             continue;
         }
 
-        // —— 第三步：输入密码，追加写入 users.dat —— 
+        // 第三步：输入密码，追加写入 users.dat
         printf("请输入密码: ");
         scanf("%31s", pwd);
 
@@ -458,6 +532,7 @@ void initWorkingDirectory() {
 
 int main() {
     initWorkingDirectory();
+    srand((unsigned)time(NULL)); // <- 只调用一次srand
     GameState state = MENU;
     while (state != EXIT) {
         if (state == MENU) {
