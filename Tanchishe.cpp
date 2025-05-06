@@ -32,7 +32,7 @@ typedef struct {
 
 // 全局变量
 int score = 0, add = 10;
-int sleeptime = 100;
+int sleeptime = 500;
 snake *head, *food, *q;
 User currentUser;
 time_t game_start_time;
@@ -66,6 +66,16 @@ void initWorkingDirectory();
 void showUserLogs();
 void writeUserLog();
 void keyListener();
+void COLOR_PRINT(const char* s, int color);
+
+
+void COLOR_PRINT(const char* s, int color)
+{
+    HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | color);
+    printf(s);
+    SetConsoleTextAttribute(handle, FOREGROUND_INTENSITY | 7);
+}
 
 void Pos(int x, int y) {
     COORD pos = { short(x), short(y) };
@@ -97,14 +107,14 @@ void keyListener() {
         // 加速／减速
         if (GetAsyncKeyState(VK_F1) & 0x8000) {
             sleeptime = std::max(SPEED_MAX, sleeptime - SPEED_STEP);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            this_thread::sleep_for(chrono::milliseconds(100));
         }
         if (GetAsyncKeyState(VK_F2) & 0x8000) {
             sleeptime = std::min(SPEED_MIN, sleeptime + SPEED_STEP);
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            this_thread::sleep_for(chrono::milliseconds(100));
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        this_thread::sleep_for(chrono::milliseconds(10));
     }
 }
 
@@ -239,6 +249,10 @@ int snakemove() {
         case L: nx -= 2; break;
         case R: nx += 2; break;
     }
+    // if (status == U)      ny--;
+    // else if (status == D) ny++;
+    // else if (status == L) nx -= 2;
+    // else if (status == R) nx += 2;
 
     // 碰墙检测
     if (nx <= 0 || nx >= 56 || ny <= 0 || ny >= 26) 
@@ -380,9 +394,12 @@ enum GameState loginMenu() {
     int choice;
     while (true) {
         system("cls");
-        printf("===== 贪吃蛇游戏登录系统 =====\n");
-        printf("1. 登录\n2. 注册新用户\n3. 查看日志\n4. 退出\n");
-        printf("请选择操作：");
+        // printf("===== 贪吃蛇游戏登录系统 =====\n");
+        // printf("1. 登录\n2. 注册新用户\n3. 查看日志\n4. 退出\n");
+        // printf("请选择操作：");
+        COLOR_PRINT("===== 贪吃蛇游戏登录系统 =====\n", 6);
+        COLOR_PRINT("1. 登录\n2. 注册新用户\n3. 查看日志\n4. 退出\n", 6);
+        COLOR_PRINT("请选择操作：", 3);
         if (scanf("%d", &choice) != 1) {
             while (getchar()!='\n');
             continue;
