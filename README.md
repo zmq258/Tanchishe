@@ -44,7 +44,6 @@
 4.修改了`registerUser()`。先检查`userlog.txt`和`user.dat`这两个文件是否存在，如果不存在就先创建它们，再做后续的用户名检测和写入。
 
 5.修改了`registerUser()` 函数，注册时会先扫描 `users.dat` 中已有的用户名，如果发现重复就提示“用户名已被注册”，并让用户重新输入。
-<<<<<<< HEAD
 
 6.修改了`snakemove()`函数中的绘制蛇身的逻辑，不用重新绘制整条蛇身，而是只重绘头和尾。这样优化后，每次移动只会更新蛇头和蛇尾两个位置，刷新效率大幅提升。
 
@@ -63,5 +62,24 @@
 - 去掉原先的方向判断，把移动调用 `snakemove()` 改用 `direction.load()`。
 
 (4) **`snakemove()`**：把 `if (GetAsyncKeyState…)` 块删掉，改为 `switch(direction.load())`。
-=======
->>>>>>> 7c9e95f8e788029d30e86cf960956942ab27738d
+
+
+
+userlog表 userlog.txt
+
+| 字段名       | 类型         | 含义                                                 |
+| ------------ | ------------ | ---------------------------------------------------- |
+| `id`         | `INT`        | 用户的唯一标识（`currentUser.id`）                   |
+| `username`   | `VARCHAR(…)` | 用户名（`currentUser.username`）                     |
+| `start_time` | `DATETIME`   | 本局游戏开始时间（格式`YYYY-MM-DD HH:MM:SS`）        |
+| `end_time`   | `DATETIME`   | 本局游戏结束时间（格式`YYYY-MM-DD HH:MM:SS`）        |
+| `duration_s` | `INT`        | 本局时长，单位秒（`difftime(end_time, start_time)`） |
+| `score`      | `INT`        | 本局得分                                             |
+
+users表 users.dat
+
+| 字段名     | 类型          | 说明                                                         |
+| ---------- | ------------- | ------------------------------------------------------------ |
+| `id`       | `INT`         | 用户唯一标识，自动递增（第一个用户为 1，后续按记录数+1）     |
+| `username` | `VARCHAR(32)` | 用户名，长度上限 31 字符，必须唯一                           |
+| `password` | `VARCHAR(32)` | 密码，长度上限 31 字符（注意：示例中以明文方式存储，实际应加密保存） |
